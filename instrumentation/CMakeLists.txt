@@ -1,4 +1,4 @@
-add_library(LLVMInstrument MODULE  main.cpp hello.cpp)
+add_library(LLVMInstrument MODULE  main.cpp)
 
 # Use C++11 to compile your pass (i.e., supply -std=c++11).
 target_compile_features(LLVMInstrument PRIVATE cxx_range_for cxx_auto_type)

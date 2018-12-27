@@ -44,8 +44,8 @@ private:
     int num;
     int genRandomNum();
     void readFunctions();
-    void addGlobalValue(int i);
-    Value * getTargetInst();
+    void addGlobalValue(int i, std::string name);
+    Value *getTargetInst(IRBuilder<> *builder);
 };
 
 // ----- register pass -----
