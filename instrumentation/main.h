@@ -7,7 +7,7 @@
 #ifndef LLVM_LEARN_MAIN_H
 #define LLVM_LEARN_MAIN_H
 
-#define DEBUG(X) outs() << X;
+#define DEBUG(X) errs() << X << "\n";
 
 #include "llvm/Pass.h"
 #include "llvm/IR/Module.h"
@@ -26,7 +26,8 @@ public:
     static char ID;
 
     InstrumentFunction() : ModulePass(ID), v(nullptr),
-        cg(nullptr), module(nullptr), functions(nullptr), num(0), f(nullptr) { }
+        cg(nullptr), module(nullptr), functions(nullptr),
+        num(0), f(nullptr), context(nullptr){ }
     ~InstrumentFunction() final;
     bool doInitialization(Module &M) override;
     bool runOnModule(Module &M) override;
@@ -40,6 +41,7 @@ private:
     Module* module;
     std::vector<std::string> *functions;
     Function *f;
+    LLVMContext* context;
 
     int num;
     int genRandomNum();

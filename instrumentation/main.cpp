@@ -28,12 +28,9 @@ bool InstrumentFunction::runOnModule(Module &M) {
      * Assumption: only works on single module program (one .bc file)
      */
 
-    v = nullptr;
     cg = &getAnalysis<CallGraphWrapperPass>().getCallGraph();
     module = &M;
     readFunctions();
-
-    Type *i64_type = IntegerType::getInt64Ty(getGlobalContext());
 
     // add global value
 //    num = genRandomNum(); // optional
@@ -48,6 +45,7 @@ bool InstrumentFunction::runOnModule(Module &M) {
     Value *vl = (ConstantInt*) l->getInitializer();
     Value *vr = (ConstantInt*) r->getInitializer();
 
+    DEBUG("initialized global variable")
 
     // iterate functions
     for (auto& cgn: *cg) {
@@ -63,13 +61,11 @@ bool InstrumentFunction::runOnModule(Module &M) {
 
         // if required, instrument this function
         auto i = inst_begin(func);
-        IRBuilder<> Builder(i->clone());
+        IRBuilder<> Builder(i->getParent());
         DEBUG("Constructed IRBuilder")
 
-        // fixme
         CallInst* v = Builder.CreateCall2(getTargetInst(&Builder), vl, vr); // insert checks
-        Function *f = &cast<Function>(*v);
-//        DEBUG("Inserted new function")
+        DEBUG("Inserted new function")
 
     }
 
@@ -91,56 +87,63 @@ Value * InstrumentFunction::getTargetInst(IRBuilder<> *builder) {
 
     // ----- construct function call -----
 
-    Type *i64_type = IntegerType::getInt64Ty(getGlobalContext());
-
     // singleton
     if (v == nullptr) {
 
         /*
          * customized values
          */
+        // todo: get integer from value symbol table
         addGlobalValue(5, "t");
-
         GlobalVariable *t = module->getGlobalVariable("t");
-
         Value *vt = (ConstantInt*) t->getInitializer();
 
         // insert a new function to program
-        Value *v = module->getOrInsertFunction("cmpr", i64_type, i64_type, NULL);
+        Constant *c = module->getOrInsertFunction("cmpr",
+                FunctionType::getVoidTy(*context),
+                Type::getInt64Ty(*context),
+                Type::getInt64Ty(*context), NULL);
 
-        f = &cast<Function>(*v);
-
-        // todo: get integer from value symbol table
+        f = &cast<Function>(*c);
 
         // define arguments
         Function::arg_iterator args = f->arg_begin();
         Value* l = args++;
         l->setName("l"); // lower  bound
-
         Value* r = args++;
         r->setName("r"); // upper bound
+        DEBUG("Inserted function prototype")
 
-        BasicBlock *pb = f->begin();
+        BasicBlock *pb =  BasicBlock::Create(*context, "entry", f);
         IRBuilder<> Builder(pb);
+        DEBUG("Created new empty basicblock")
 
         // call "exit(0)"
-        BasicBlock *blk =  BasicBlock::Create(getGlobalContext(), "stop", f);
+        BasicBlock *blk =  BasicBlock::Create(*context, "stop", f);
         IRBuilder<> blkBuilder(blk);
-        Value *one = ConstantInt::get(Type::getInt32Ty(module->getContext()),0);
-        Value *blkv = module->getOrInsertFunction("exit", i64_type, NULL);
+        Value *one = ConstantInt::get(Type::getInt64Ty(*context), 0, true);
+        Value *blkv = module->getOrInsertFunction("exit",
+                FunctionType::getVoidTy(*context),
+                Type::getInt64Ty(*context), NULL);
+
         blkBuilder.CreateCall(blkv, one);
+        DEBUG("Created call to exit")
 
         // empty
-        BasicBlock *nblk =  BasicBlock::Create(getGlobalContext(), "nothing", f);
+        BasicBlock *nblk =  BasicBlock::Create(*context, "nothing", f);
 
+        /*
+         * fixme: change condition to boolean only
+         */
         // l - i
-        Value *lower = Builder.CreateSub(l, t);
+        Value *lower = Builder.CreateSub(l, vt);
         // i - r
-        Value *upper = Builder.CreateSub(t, r);
+        Value *upper = Builder.CreateSub(vt, r);
         // l - i || i - r (l > i or i > r)
         Value *both = Builder.CreateOr(lower, upper);
         // if (l > i || i > r), exit(0)
         BranchInst *br = Builder.CreateCondBr(both, blk, nblk);
+        DEBUG("Created compare function")
     }
 
     // f should be called
@@ -150,22 +153,25 @@ Value * InstrumentFunction::getTargetInst(IRBuilder<> *builder) {
 void InstrumentFunction::addGlobalValue(int i, string name) {
     // ----- pass generated number to program -----
 
-    Type *i64_type = IntegerType::getInt64Ty(getGlobalContext());
+    Type *i64_type = IntegerType::getInt64Ty(*context);
 
+    Constant* const_ = ConstantInt::get(i64_type, i/*value*/, true);
     // create constant int
     GlobalVariable* gvar_int = new GlobalVariable(
             /*Type=*/i64_type,
             /*isConstant=*/true,
             /*Linkage=*/GlobalValue::CommonLinkage,
-            /*Initializer=*/0, // has initializer, specified below
+            /*Initializer=*/const_, // has initializer, specified below
             /*Name=*/name);
 
     // Constant Definitions
     gvar_int->setAlignment(4);
-    Constant* const_ = ConstantInt::get(i64_type, i/*value*/, true);
-    // Global Variable Definitions
-    gvar_int->setInitializer(const_);
 
+    // Global Variable Definitions
+//    gvar_int->setInitializer(const_);
+
+    auto list = &module->getGlobalList();
+    list->push_back(gvar_int);
 
     // todo: should work, need testing
 }
@@ -189,10 +195,12 @@ void InstrumentFunction::readFunctions() {
 }
 
 bool InstrumentFunction::doInitialization(Module &M) {
+    module = &M;
+    context = &module->getContext();
     return true;
 }
 
-bool InstrumentFunction::doFinalization(Module &) {
+bool InstrumentFunction::doFinalization(Module &M) {
     return true;
 }
 
