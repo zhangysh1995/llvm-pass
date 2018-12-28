@@ -9,6 +9,7 @@
 #include "llvm/IR/TypeBuilder.h"
 #include "llvm/Analysis/CallGraph.h"
 #include "llvm/Bitcode/ReaderWriter.h"
+#include "llvm/IR/Verifier.h"
 
 #include "main.h"
 
@@ -28,6 +29,7 @@ bool InstrumentFunction::runOnModule(Module &M) {
      * Assumption: only works on single module program (one .bc file)
      */
 
+    raw_ostream &os();
     cg = &getAnalysis<CallGraphWrapperPass>().getCallGraph();
     module = &M;
     readFunctions();
@@ -45,6 +47,7 @@ bool InstrumentFunction::runOnModule(Module &M) {
     Value *vl = (ConstantInt*) l->getInitializer();
     Value *vr = (ConstantInt*) r->getInitializer();
 
+    verifyModule(*module, &outs());
     DEBUG("initialized global variable")
 
     // iterate functions
@@ -59,27 +62,36 @@ bool InstrumentFunction::runOnModule(Module &M) {
         auto result = std::find(functions->begin(), functions->end(), func->getName().str());
         if (result == functions->end()) continue;
 
+        // test
+        assert(func->getEntryBlock().getTerminator() != nullptr);
+
         // if required, instrument this function
-        auto i = inst_begin(func);
-        IRBuilder<> Builder(i->getParent());
+        BasicBlock * first = &func->getEntryBlock();
+        IRBuilder<> Builder(first);
         DEBUG("Constructed IRBuilder")
 
         CallInst* v = Builder.CreateCall2(getTargetInst(&Builder), vl, vr); // insert checks
+        Builder.SetInsertPoint(first);
+//        assert(func->getEntryBlock().getTerminator() != nullptr);
         DEBUG("Inserted new function")
 
     }
 
+    DEBUG("End instrumentation")
+
     // output new module
-    std::error_code EC;
-    raw_fd_ostream OS("module.bc", EC, sys::fs::F_None);
-    WriteBitcodeToFile(&M, OS);
+//    std::error_code EC;
+//    raw_fd_ostream OS("module.bc", EC, sys::fs::F_None);
+//    WriteBitcodeToFile(&M, OS);
 
     return true;
 }
 
 void cmpr(int l, int r, int i) {
     if (i < l || i > r)
-        std::exit(-1);
+        std::exit(0);
+    else
+        std::exit(1);
 }
 
 // ----- instrument required checks
@@ -115,35 +127,33 @@ Value * InstrumentFunction::getTargetInst(IRBuilder<> *builder) {
         DEBUG("Inserted function prototype")
 
         BasicBlock *pb =  BasicBlock::Create(*context, "entry", f);
+        BasicBlock *blk =  BasicBlock::Create(*context, "cond_true", f);
+        BasicBlock *nblk =  BasicBlock::Create(*context, "cond_false", f);
+
         IRBuilder<> Builder(pb);
         DEBUG("Created new empty basicblock")
 
-        // call "exit(0)"
-        BasicBlock *blk =  BasicBlock::Create(*context, "stop", f);
-        IRBuilder<> blkBuilder(blk);
-        Value *one = ConstantInt::get(Type::getInt64Ty(*context), 0, true);
-        Value *blkv = module->getOrInsertFunction("exit",
-                FunctionType::getVoidTy(*context),
-                Type::getInt64Ty(*context), NULL);
-
-        blkBuilder.CreateCall(blkv, one);
-        DEBUG("Created call to exit")
-
-        // empty
-        BasicBlock *nblk =  BasicBlock::Create(*context, "nothing", f);
-
-        /*
-         * fixme: change condition to boolean only
-         */
-        // l - i
-        Value *lower = Builder.CreateSub(l, vt);
-        // i - r
-        Value *upper = Builder.CreateSub(vt, r);
+        // i < l
+        Value *lower = Builder.CreateICmpSLT(vt, l);
+        // i > r
+        Value *upper = Builder.CreateICmpSGT(vt, r);
         // l - i || i - r (l > i or i > r)
         Value *both = Builder.CreateOr(lower, upper);
         // if (l > i || i > r), exit(0)
         BranchInst *br = Builder.CreateCondBr(both, blk, nblk);
-        DEBUG("Created compare function")
+        Builder.SetInsertPoint(ret);
+
+        DEBUG("Created compare condition")
+
+        // cond_true: call exit(0)
+        IRBuilder<> blkBuilder(blk);
+        Value *one = ConstantInt::get(Type::getInt64Ty(*context), 0, true);
+        Value *blkv = module->getOrInsertFunction("std::exit",
+                FunctionType::getVoidTy(*context),
+                Type::getInt64Ty(*context), NULL);
+
+        blkBuilder.CreateCall(blkv, one);
+        DEBUG("Created call to exit 0")
     }
 
     // f should be called

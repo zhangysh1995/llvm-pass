@@ -125,33 +125,6 @@ LLVMInstrument/fast:
 	cd /Users/KellyZhang/Documents/cppcode/llvm-pass-tutorial && $(MAKE) -f instrumentation/CMakeFiles/LLVMInstrument.dir/build.make instrumentation/CMakeFiles/LLVMInstrument.dir/build
 .PHONY : LLVMInstrument/fast
 
-hello.o: hello.cpp.o
-
-.PHONY : hello.o
-
-# target to build an object file
-hello.cpp.o:
-	cd /Users/KellyZhang/Documents/cppcode/llvm-pass-tutorial && $(MAKE) -f instrumentation/CMakeFiles/LLVMInstrument.dir/build.make instrumentation/CMakeFiles/LLVMInstrument.dir/hello.cpp.o
-.PHONY : hello.cpp.o
-
-hello.i: hello.cpp.i
-
-.PHONY : hello.i
-
-# target to preprocess a source file
-hello.cpp.i:
-	cd /Users/KellyZhang/Documents/cppcode/llvm-pass-tutorial && $(MAKE) -f instrumentation/CMakeFiles/LLVMInstrument.dir/build.make instrumentation/CMakeFiles/LLVMInstrument.dir/hello.cpp.i
-.PHONY : hello.cpp.i
-
-hello.s: hello.cpp.s
-
-.PHONY : hello.s
-
-# target to generate assembly for a file
-hello.cpp.s:
-	cd /Users/KellyZhang/Documents/cppcode/llvm-pass-tutorial && $(MAKE) -f instrumentation/CMakeFiles/LLVMInstrument.dir/build.make instrumentation/CMakeFiles/LLVMInstrument.dir/hello.cpp.s
-.PHONY : hello.cpp.s
-
 main.o: main.cpp.o
 
 .PHONY : main.o
@@ -188,9 +161,6 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... edit_cache"
 	@echo "... LLVMInstrument"
-	@echo "... hello.o"
-	@echo "... hello.i"
-	@echo "... hello.s"
 	@echo "... main.o"
 	@echo "... main.i"
 	@echo "... main.s"
