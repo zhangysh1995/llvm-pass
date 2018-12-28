@@ -35,8 +35,8 @@ bool InstrumentFunction::runOnModule(Module &M) {
     readFunctions();
 
     // add global value
-//    num = genRandomNum(); // optional
-//    addGlobalValue(num); // pass a value want to compare
+//    num = genRandomNum(); // optional, random number generator
+//    addGlobalValue(num); // pass a global value
 
     addGlobalValue(2, "l");
     addGlobalValue(7, "r");
@@ -66,32 +66,36 @@ bool InstrumentFunction::runOnModule(Module &M) {
         assert(func->getEntryBlock().getTerminator() != nullptr);
 
         // if required, instrument this function
-        BasicBlock * first = &func->getEntryBlock();
-        IRBuilder<> Builder(first);
+        auto& i = *inst_begin(func);
+        IRBuilder<> Builder(&i);
         DEBUG("Constructed IRBuilder")
 
+        //  before statements in this function
+        Builder.SetInsertPoint(&i);
         CallInst* v = Builder.CreateCall2(getTargetInst(&Builder), vl, vr); // insert checks
-        Builder.SetInsertPoint(first);
-//        assert(func->getEntryBlock().getTerminator() != nullptr);
-        DEBUG("Inserted new function")
 
+        assert(func->getEntryBlock().getTerminator() != nullptr);
+        DEBUG("Inserted new function")
     }
 
     DEBUG("End instrumentation")
 
     // output new module
-//    std::error_code EC;
-//    raw_fd_ostream OS("module.bc", EC, sys::fs::F_None);
-//    WriteBitcodeToFile(&M, OS);
+    std::error_code EC;
+    raw_fd_ostream OS("module.bc", EC, sys::fs::F_None);
+    WriteBitcodeToFile(&M, OS);
 
+    verifyModule(*module, &outs());
     return true;
 }
 
-void cmpr(int l, int r, int i) {
-    if (i < l || i > r)
+int cmpr(int l, int r, int i) {
+    if (i < l || i > r) {
         std::exit(0);
+        return i;
+    }
     else
-        std::exit(1);
+        return i;
 }
 
 // ----- instrument required checks
@@ -101,7 +105,6 @@ Value * InstrumentFunction::getTargetInst(IRBuilder<> *builder) {
 
     // singleton
     if (v == nullptr) {
-
         /*
          * customized values
          */
@@ -141,19 +144,26 @@ Value * InstrumentFunction::getTargetInst(IRBuilder<> *builder) {
         Value *both = Builder.CreateOr(lower, upper);
         // if (l > i || i > r), exit(0)
         BranchInst *br = Builder.CreateCondBr(both, blk, nblk);
-        Builder.SetInsertPoint(ret);
 
         DEBUG("Created compare condition")
 
         // cond_true: call exit(0)
         IRBuilder<> blkBuilder(blk);
-        Value *one = ConstantInt::get(Type::getInt64Ty(*context), 0, true);
-        Value *blkv = module->getOrInsertFunction("std::exit",
-                FunctionType::getVoidTy(*context),
-                Type::getInt64Ty(*context), NULL);
+
+        // could have runtime problem
+        Value *one = ConstantInt::get(Type::getInt32Ty(*context), 0, true);
+        Value *blkv = module->getOrInsertFunction("exit",
+                Type::getVoidTy(getGlobalContext()),
+                Type::getInt32Ty(getGlobalContext()), NULL);
 
         blkBuilder.CreateCall(blkv, one);
         DEBUG("Created call to exit 0")
+
+        // every basic block must have one terminator
+        blkBuilder.CreateRetVoid();
+
+        IRBuilder<> nblkBuilder(nblk);
+        nblkBuilder.CreateRetVoid(); // cond_false: do nothing and return
     }
 
     // f should be called
@@ -164,21 +174,21 @@ void InstrumentFunction::addGlobalValue(int i, string name) {
     // ----- pass generated number to program -----
 
     Type *i64_type = IntegerType::getInt64Ty(*context);
+    Constant* const_ = ConstantInt::get(*context, APInt(64, 0, true));
 
-    Constant* const_ = ConstantInt::get(i64_type, i/*value*/, true);
     // create constant int
     GlobalVariable* gvar_int = new GlobalVariable(
             /*Type=*/i64_type,
-            /*isConstant=*/true,
+            /*isConstant=*/false,
             /*Linkage=*/GlobalValue::CommonLinkage,
-            /*Initializer=*/const_, // has initializer, specified below
+            /*Initializer=*/0, // has initializer, specified below
             /*Name=*/name);
 
     // Constant Definitions
     gvar_int->setAlignment(4);
 
     // Global Variable Definitions
-//    gvar_int->setInitializer(const_);
+    gvar_int->setInitializer(const_);
 
     auto list = &module->getGlobalList();
     list->push_back(gvar_int);
