@@ -10,6 +10,7 @@
 #include "llvm/Analysis/CallGraph.h"
 #include "llvm/Bitcode/ReaderWriter.h"
 #include "llvm/IR/Verifier.h"
+#include "llvm/ExecutionEngine/ExecutionEngine.h"
 
 #include "main.h"
 
@@ -89,13 +90,11 @@ bool InstrumentFunction::runOnModule(Module &M) {
     return true;
 }
 
-int cmpr(int l, int r, int i) {
+// mock function
+void cmpr(int l, int r, int i) {
     if (i < l || i > r) {
         std::exit(0);
-        return i;
     }
-    else
-        return i;
 }
 
 // ----- instrument required checks
@@ -192,7 +191,6 @@ void InstrumentFunction::addGlobalValue(int i, string name) {
 
     auto list = &module->getGlobalList();
     list->push_back(gvar_int);
-
     // todo: should work, need testing
 }
 
