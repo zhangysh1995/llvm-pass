@@ -14,7 +14,9 @@
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/Analysis/CallGraph.h"
-
+//#include "llvm/PassRegistry.h"
+//#include "llvm/IR/LegacyPassManager.h"
+//#include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include <vector>
 #include <string>
 
@@ -46,7 +48,8 @@ private:
     int num;
     int genRandomNum();
     void readFunctions();
-    void addGlobalValue(int i, std::string name);
+    void changeGlobalValue(IRBuilder<>* builder, std::string name, int value);
+    void addGlobalValue(std::string name);
     Value *getTargetInst(IRBuilder<> *builder);
 };
 
@@ -56,5 +59,23 @@ static RegisterPass<InstrumentFunction> X("instrument", "Instrument Pass",
                                           false /* Only looks at CFG */,
                                           false /* Analysis Pass */);
 
+//static void registerMyPass(const PassManagerBuilder &,
+//                           legacy::PassManagerBase &PM) {
+//    PM.add(new InstrumentFunction());
+//}
+//
+//static RegisterStandardPasses
+//        RegisterMyPass(PassManagerBuilder::EP_EnabledOnOptLevel0,
+//                       registerMyPass);
+
+//INITIALIZE_PASS_BEGIN(InstrumentFunction, "instrument", "Instrument all functions",
+//        false, false)
+//
+//INITIALIZE_PASS_DEPENDENCY(CallGraphWrapperPass)
+//
+//INITIALIZE_PASS_END( InstrumentFunction, "instrument", "instrument all functions",
+//        false, false)
+//
+//ModulePass *llvm::createInstrumentFunctionPass() {return new InstrumentFunction(); }
 
 #endif //LLVM_LEARN_MAIN_H

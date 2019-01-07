@@ -39,8 +39,8 @@ bool InstrumentFunction::runOnModule(Module &M) {
 //    num = genRandomNum(); // optional, random number generator
 //    addGlobalValue(num); // pass a global value
 
-    addGlobalValue(2, "l");
-    addGlobalValue(7, "r");
+    addGlobalValue("l");
+    addGlobalValue("r");
 
     GlobalVariable *l = module->getGlobalVariable("l");
     GlobalVariable *r = module->getGlobalVariable("r");
@@ -79,7 +79,7 @@ bool InstrumentFunction::runOnModule(Module &M) {
         DEBUG("Inserted new function")
     }
 
-    DEBUG("End instrumentation")
+    DEBUG("End FuncInstrument")
 
     // output new module
     std::error_code EC;
@@ -108,7 +108,7 @@ Value * InstrumentFunction::getTargetInst(IRBuilder<> *builder) {
          * customized values
          */
         // todo: get integer from value symbol table
-        addGlobalValue(5, "t");
+        addGlobalValue("t");
         GlobalVariable *t = module->getGlobalVariable("t");
         Value *vt = (ConstantInt*) t->getInitializer();
 
@@ -149,6 +149,10 @@ Value * InstrumentFunction::getTargetInst(IRBuilder<> *builder) {
         // cond_true: call exit(0)
         IRBuilder<> blkBuilder(blk);
 
+
+        // load and change global variable
+        changeGlobalValue(&blkBuilder, "t", 10);
+
         // could have runtime problem
         Value *one = ConstantInt::get(Type::getInt32Ty(*context), 0, true);
         Value *blkv = module->getOrInsertFunction("exit",
@@ -163,13 +167,21 @@ Value * InstrumentFunction::getTargetInst(IRBuilder<> *builder) {
 
         IRBuilder<> nblkBuilder(nblk);
         nblkBuilder.CreateRetVoid(); // cond_false: do nothing and return
+
+
     }
 
     // f should be called
     return f;
 }
 
-void InstrumentFunction::addGlobalValue(int i, string name) {
+void InstrumentFunction::changeGlobalValue(IRBuilder<>* builder, string name, int value) {
+    Value* loadInst = builder->CreateLoad(module->getGlobalVariable(name));
+    Value* newt = builder->CreateAdd(loadInst, ConstantInt::get(*context, APInt(64, value, true)));
+    builder->CreateStore(newt, module->getGlobalVariable(name));
+}
+
+void InstrumentFunction::addGlobalValue(string name) {
     // ----- pass generated number to program -----
 
     Type *i64_type = IntegerType::getInt64Ty(*context);
