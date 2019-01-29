@@ -11,17 +11,20 @@ fi
 #===== Transforms =====
 # flags="clang++ -Xclang -load -Xclang ./libLLVMtest.so"
 
-flags="opt -load ./libLLVMtest.so -calltrace < "
+flags="opt -load ./libLLVMtest.so -calltrace "
 
 #===== Run pass =====
 function doit {
+    local full=$?
+	local retVal=$?
+    local name=$?
+
     for f in `ls ${d}/*.bc` ;
     do
-	echo "Testing file: " $f
-        local full=$?
-	local retVal=$?
+        name=`basename ${f} .bc`
 
-        full="${flags} ${f} > /dev/null"
+        echo "Testing file: " ${name}
+        full="${flags} ${f} > ${name}1.bc"
         retVal= eval $full
 
         if [ $retVal -ne 0 ]; then
@@ -39,7 +42,7 @@ do
     doit $d
 done
 
-rm ${1}/*/test.bc
+# rm ${1}/*/test.bc
 
 echo "Finished testing, exit."
 exit

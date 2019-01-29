@@ -54,7 +54,8 @@ bool CallTraceInstrPass::runOnModule(Module& M) {
     }
 
     verify(M);
-    writeModule(M, "test.bc");
+//    writeModule(M, "test.bc");
+//    writeModule(M, name);
 }
 
 void CallTraceInstrPass::doInstrument(Module &M,
