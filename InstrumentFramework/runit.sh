@@ -8,18 +8,21 @@ if [ $# -eq 0 ] ; then
 	exit
 fi
 
-flags="clang++ -Xclang -load -Xclang ./libLLVMtest.so"
+#===== Transforms =====
+# flags="clang++ -Xclang -load -Xclang ./libLLVMtest.so"
+
+flags="opt -load ./libLLVMtest.so -calltrace < "
 
 #===== Run pass =====
 function doit {
-    for f in `ls ${d}/*.bc`:
+    for f in `ls ${d}/*.bc` ;
     do
 	echo "Testing file: " $f
         local full=$?
 	local retVal=$?
 
-        full="${flags} ${f}"
-        retVal= eval $full 
+        full="${flags} ${f} > /dev/null"
+        retVal= eval $full
 
         if [ $retVal -ne 0 ]; then
 	    echo "There is a problem. Aborted."
@@ -32,9 +35,11 @@ function doit {
 # list all folders
 for d in `ls -d ${1}/*`;
 do
-    echo "In folder" $d
+    echo "===== In folder" $d
     doit $d
 done
+
+rm ${1}/*/test.bc
 
 echo "Finished testing, exit."
 exit
