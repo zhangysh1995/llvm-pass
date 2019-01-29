@@ -39,8 +39,11 @@ bool CallTraceInstrPass::runOnModule(Module& M) {
 
                 // get called function
                 CallSite cs(cast<Value>(&*i));
-                if(Function* calledFunc = cs.getCalledFunction())
+                if(Function* calledFunc = cs.getCalledFunction()) {
                     funcName = calledFunc->getName();
+
+                    calledFunc->getValueID();
+                }
                 else
                     continue; // function pointer
 
@@ -49,6 +52,7 @@ bool CallTraceInstrPass::runOnModule(Module& M) {
                 builder.SetInsertPoint(&*i);
 
                 doInstrument(M, &builder, funcName);
+
             }
         }
     }
@@ -74,11 +78,22 @@ void CallTraceInstrPass::doInstrument(Module &M,
         result = builder->CreateGlobalStringPtr(funcName, "funcName");
     }
 
-
+    // declaration
     Value* blkv = M.getOrInsertFunction("printf",
-            FunctionType::get(IntegerType::getInt32Ty(*context),
+            FunctionType::get(IntegerType::getInt8PtrTy(*context),
             PointerType::get(Type::getInt8Ty(*context), 0),true /* this is var arg func type*/));
 
+    // declare and allocate string
+    Value* name = ConstantDataArray::getString(*context, funcName, true);
+    Value* mem = builder->CreateAlloca(name->getType(), ConstantExpr::getSizeOf(name->getType()));
+
+    // calculate pointer to string
+    std::vector<Value*> index_vector;
+    index_vector.push_back(ConstantInt::get(Type::getInt32Ty(*context), 0));
+    auto valueAsPtr = builder->CreateGEP(mem, index_vector, "tmp");
+
+    // update global variable, and call
+    builder->CreateStore(name, valueAsPtr);
     builder->CreateCall(blkv, result);
 
 }
