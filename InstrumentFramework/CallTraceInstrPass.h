@@ -11,10 +11,13 @@
 class CallTraceInstrPass: public AbsInstrPass {
 public:
     static char ID;
-    CallTraceInstrPass(): AbsInstrPass(ID) {};
+    CallTraceInstrPass(): AbsInstrPass(ID), csNum(0), fpNum(0), funcCG(0) {};
 
     bool runOnModule(Module& M) override;
     void getAnalysisUsage(AnalysisUsage& AU) const override;
+
+    bool doFinalization(Module& M) override;
+
 
     // variadic function
     void doInstrument(Module &M, IRBuilder<>* builder,
@@ -22,7 +25,9 @@ public:
 
 private:
     LLVMContext* context;
-
+    int funcCG;
+    int csNum;
+    int fpNum;
 };
 
 #endif //PROJECT_CALLTRACEINSTRPASS_H

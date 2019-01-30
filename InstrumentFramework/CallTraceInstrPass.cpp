@@ -2,9 +2,10 @@
 // Created by zhangysh1995 on 1/25/19.
 //
 
-#include <llvm/IR/IRBuilder.h>
+#include "llvm/Support/raw_ostream.h"
+#include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LegacyPassManager.h"
-#include <llvm/Transforms/IPO/PassManagerBuilder.h>
+#include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/Pass.h"
 #include "llvm/Analysis/CallGraph.h"
 #include "llvm/IR/InstIterator.h"
@@ -25,6 +26,8 @@ bool CallTraceInstrPass::runOnModule(Module& M) {
         if(node.first->isIntrinsic())
             continue;
 
+        funcCG++;
+
         auto func = const_cast<Function*>(node.first);
         for(inst_iterator i = inst_begin(func);
             i != inst_end(func); i++)
@@ -44,15 +47,17 @@ bool CallTraceInstrPass::runOnModule(Module& M) {
 
                     calledFunc->getValueID();
                 }
-                else
+                else {
+                    fpNum ++;
                     continue; // function pointer
+                }
 
                 // insert logging
                 IRBuilder<> builder(*context);
                 builder.SetInsertPoint(&*i);
 
                 doInstrument(M, &builder, funcName);
-
+                csNum ++;
             }
         }
     }
@@ -60,6 +65,18 @@ bool CallTraceInstrPass::runOnModule(Module& M) {
     verify(M);
 //    writeModule(M, "test.bc");
 //    writeModule(M, name);
+}
+
+bool CallTraceInstrPass::doFinalization(Module &M) {
+    errs() << "===-------------------------------------------------------------------------===\n";
+    errs() << "                          Call Trace Collection\n";
+    errs() << "===-------------------------------------------------------------------------===\n";
+
+    errs() << "  Total Functions in Call Graph:  " << funcCG << "\n";
+    errs() << "   --- Call Sites ---    --- Instrumented ---    --- Dynamic Dispatch ---\n";
+    errs() << "\t" << fpNum+csNum << "\t\t";
+    errs() << "\t" << csNum << "\t\t";
+    errs() << "\t" << fpNum << "\n";
 }
 
 void CallTraceInstrPass::doInstrument(Module &M,
@@ -102,6 +119,8 @@ void CallTraceInstrPass::getAnalysisUsage(AnalysisUsage &AU) const {
     AU.addRequired<CallGraphWrapperPass>();
     AU.setPreservesAll();
 }
+
+
 
 
 // ===== Register Pass =====
