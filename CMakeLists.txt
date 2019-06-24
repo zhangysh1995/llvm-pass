@@ -14,4 +14,4 @@ add_definitions(${LLVM_DEFINITIONS})
 include_directories(${LLVM_INCLUDE_DIRS})
 link_directories(${LLVM_LIBRARY_DIRS})
 
-add_subdirectory(InstrumentFramework)  # Use your pass name here.
+add_subdirectory(BasicBlockInstrument)  # Use your pass name here.
