@@ -8,7 +8,7 @@ bool BasicBlockStats::runOnBasicBlock(BasicBlock &B){
     count += 1;
 }
 
-bool BasicBlockStats::doFinalization(BasicBlock &B){
+bool BasicBlockStats::doFinalization(Module &M) {
     errs() << "============ " << " Basic Block Statistics" << " ============";
     errs() << "We have " << BasicBlockStats::count << " basic blocks";
 }
