@@ -2,13 +2,13 @@
 
 #include "main.h"
 
+using namespace llvm;
 
-using std::cout;
-bool runOnBasicBlock(BasicBloc &B) override {
+bool BasicBlockStats::runOnBasicBlock(BasicBlock &B){
     count += 1;
 }
 
-bool doFinalization(Module &) override {
+bool BasicBlockStats::doFinalization(BasicBlock &B){
     errs() << "============ " << " Basic Block Statistics" << " ============";
-    errs() << "We have " << count << " basic blocks";
+    errs() << "We have " << BasicBlockStats::count << " basic blocks";
 }

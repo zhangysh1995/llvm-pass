@@ -1,21 +1,20 @@
-#define DEBUG(X) errs() << X << "\n";
-
 #include "llvm/Pass.h"
 #include "llvm/IR/BasicBlock.h"
 
-class BasicBlockStats : public BasicBlockPass {
 
-    static int count = 0;
+class BasicBlockStats: public BasicBlockPass{
+public:
+    static int count;
     static char ID;
 
-    public:
         BasicBlockStats() : BasicBlockPass(ID) {};
-        bool runOnBasicBlock(BasicBloc &B) override;
-        bool doFinalization(Module &) override;
-}
+        bool runOnBasicBlock(llvm::BasicBlock &B) override;
+        bool doFinalization(llvm::BasicBlock &B) override;
+};
 
 // ----- register pass -----
-char InstrumentFunction::ID = 0;
+char BasicBlockStats::ID = 0;
+int BasicBlockStats::count = 0;
 static RegisterPass<BasicBlockStats> X("bbstats", "Show statistics about basic blocks",
-                                          true /* Only looks at CFG */,
+                                          false /* Only looks at CFG */,
                                           false /* Analysis Pass */);
